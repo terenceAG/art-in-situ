@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useMemo } from "react";
+import { useEffect, useRef, useCallback } from "react";
 
 // WORLD COORDINATE SYSTEM
 const WORLD = { w: 1600, h: 900 } as const;
@@ -52,6 +52,69 @@ const DEFAULT_CHAIR: ChairAnchors = {
   floorOffset: 100,
 };
 
+const REF_ART_CM = { w: 96, h: 80 } as const;
+const REF_ART_WORLD = { w: 414, h: 345 } as const;
+const REF_LONG_EDGE_CM = Math.max(REF_ART_CM.w, REF_ART_CM.h);
+const CHAIR_GAP_RIGHT_OF_ART = 200;
+
+const ART_ZOOM_FACTOR_MIN = 0.32;
+const ART_ZOOM_FACTOR_MAX = 1.12;
+
+const BOTTOM_GAP_REF = 280;
+const BOTTOM_GAP_MIN = 100;
+const BOTTOM_GAP_SMALL_ART = 190;
+const BOTTOM_GAP_HEIGHT_FACTOR = 0.6;
+const W_DESKTOP = 1400;
+const MOBILE_ART_WIDTH_RATIO = 0.9;
+
+function getBottomGapForArtHeight(
+  artWorldH: number,
+  dimensionsCm: DimensionsCm | null,
+  viewW: number,
+): number {
+  if (viewW >= W_DESKTOP && dimensionsCm && dimensionsCm.widthCm < 100 && dimensionsCm.heightCm < 100) {
+    return BOTTOM_GAP_SMALL_ART;
+  }
+  const reduction = (artWorldH - REF_ART_WORLD.h) * BOTTOM_GAP_HEIGHT_FACTOR;
+  return Math.max(BOTTOM_GAP_MIN, BOTTOM_GAP_REF - reduction);
+}
+
+function getSeamYForDimensions(dimensionsCm: DimensionsCm | null): number {
+  if (!dimensionsCm) return SEAM_Y;
+  const w = dimensionsCm.widthCm;
+  const h = dimensionsCm.heightCm;
+  if (w >= 300 || h >= 300) return SEAM_Y;
+  if (w >= 200 || h >= 200) return 800;
+  return SEAM_Y;
+}
+
+interface DimensionsCm {
+  widthCm: number;
+  heightCm: number;
+}
+
+function dimensionsCmToWorldSize(d: DimensionsCm): { w: number; h: number } {
+  return {
+    w: (d.widthCm / REF_ART_CM.w) * REF_ART_WORLD.w,
+    h: (d.heightCm / REF_ART_CM.h) * REF_ART_WORLD.h,
+  };
+}
+
+function getArtZoomFactor(dimensionsCm: DimensionsCm | null): number {
+  if (!dimensionsCm) return 1;
+  const w = dimensionsCm.widthCm;
+  const h = dimensionsCm.heightCm;
+  const longEdgeCm = Math.max(w, h);
+  let factor = REF_LONG_EDGE_CM / longEdgeCm;
+  let maxFactor = ART_ZOOM_FACTOR_MAX;
+  if (w >= 200 || h >= 200) {
+    const wideBoost = w >= 300 || h >= 300 ? 1.1 : 1.3;
+    factor *= wideBoost;
+    maxFactor = 1.4;
+  }
+  return Math.max(ART_ZOOM_FACTOR_MIN, Math.min(maxFactor, factor));
+}
+
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
@@ -84,18 +147,20 @@ function createNoiseTexture(size: number = 256): HTMLCanvasElement {
 function drawBackground(
   ctx: CanvasRenderingContext2D,
   noiseCanvas: HTMLCanvasElement,
+  pad: number = 800,
+  seamY: number = SEAM_Y,
 ) {
-  const PAD = 800;
+  const PAD = pad;
   const L = -PAD;
   const R = WORLD.w + PAD;
   const T = -PAD;
   const B = WORLD.h + PAD;
   const W = R - L;
-  const wallH = SEAM_Y - T;
-  const floorH = B - SEAM_Y;
+  const wallH = seamY - T;
+  const floorH = B - seamY;
 
   // Wall gradient
-  const wallGrad = ctx.createLinearGradient(0, T, 0, SEAM_Y);
+  const wallGrad = ctx.createLinearGradient(0, T, 0, seamY);
   wallGrad.addColorStop(0, WALL_COLORS.top);
   wallGrad.addColorStop(0.7, WALL_COLORS.bottom);
   wallGrad.addColorStop(1, WALL_COLORS.bottom);
@@ -103,33 +168,33 @@ function drawBackground(
   ctx.fillRect(L, T, W, wallH);
 
   // Floor gradient
-  const floorGrad = ctx.createLinearGradient(0, SEAM_Y, 0, B);
+  const floorGrad = ctx.createLinearGradient(0, seamY, 0, B);
   floorGrad.addColorStop(0, FLOOR_COLORS.top);
   floorGrad.addColorStop(1, FLOOR_COLORS.bottom);
   ctx.fillStyle = floorGrad;
-  ctx.fillRect(L, SEAM_Y, W, floorH);
+  ctx.fillRect(L, seamY, W, floorH);
 
   // Ambient occlusion at wall-floor junction
   ctx.save();
-  const aoGrad = ctx.createLinearGradient(0, SEAM_Y - 30, 0, SEAM_Y + 40);
+  const aoGrad = ctx.createLinearGradient(0, seamY - 30, 0, seamY + 40);
   aoGrad.addColorStop(0, "rgba(0,0,0,0)");
   aoGrad.addColorStop(0.4, "rgba(0,0,0,0.04)");
   aoGrad.addColorStop(0.6, "rgba(0,0,0,0.06)");
   aoGrad.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = aoGrad;
-  ctx.fillRect(L, SEAM_Y - 30, W, 70);
+  ctx.fillRect(L, seamY - 30, W, 70);
   ctx.restore();
 
   // Baseboard
   const baseboardH = 8;
   ctx.fillStyle = BASEBOARD_COLOR;
-  ctx.fillRect(L, SEAM_Y - baseboardH, W, baseboardH);
+  ctx.fillRect(L, seamY - baseboardH, W, baseboardH);
 
   ctx.fillStyle = "rgba(255,255,255,0.12)";
-  ctx.fillRect(L, SEAM_Y - baseboardH, W, 1);
+  ctx.fillRect(L, seamY - baseboardH, W, 1);
 
   ctx.fillStyle = "rgba(0,0,0,0.08)";
-  ctx.fillRect(L, SEAM_Y, W, 1);
+  ctx.fillRect(L, seamY, W, 1);
 
   // Noise grain
   const pat = ctx.createPattern(noiseCanvas, "repeat");
@@ -143,20 +208,20 @@ function drawBackground(
     ctx.save();
     ctx.globalAlpha = 0.035;
     ctx.fillStyle = pat;
-    ctx.fillRect(L, SEAM_Y, W, floorH);
+    ctx.fillRect(L, seamY, W, floorH);
     ctx.restore();
   }
 
   // Floor bounce light
   ctx.save();
   const bounceGrad = ctx.createRadialGradient(
-    WORLD.w / 2, SEAM_Y, 0,
-    WORLD.w / 2, SEAM_Y + 200, WORLD.w * 0.6,
+    WORLD.w / 2, seamY, 0,
+    WORLD.w / 2, seamY + 200, WORLD.w * 0.6,
   );
   bounceGrad.addColorStop(0, "rgba(255,255,255,0.06)");
   bounceGrad.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = bounceGrad;
-  ctx.fillRect(L, SEAM_Y, W, floorH);
+  ctx.fillRect(L, seamY, W, floorH);
   ctx.restore();
 }
 
@@ -170,7 +235,7 @@ function drawArtworkFromAnchors(
   const boxY = seamY - art.bottomGap - art.h;
 
   if (artImage) {
-    // Contain-fit: show the full image, no cropping
+    // Contain-fit
     const imgAspect = artImage.naturalWidth / artImage.naturalHeight;
     const boxAspect = art.w / art.h;
 
@@ -187,7 +252,7 @@ function drawArtworkFromAnchors(
       drawY = boxY;
     }
 
-    // Soft outer shadow
+    // shadow
     ctx.save();
     ctx.shadowColor = "rgba(0,0,0,0.28)";
     ctx.shadowBlur = 32;
@@ -197,7 +262,7 @@ function drawArtworkFromAnchors(
     ctx.fillRect(drawX, drawY, drawW, drawH);
     ctx.restore();
 
-    // Tighter inner shadow 
+    // inner shadow 
     ctx.save();
     ctx.shadowColor = "rgba(0,0,0,0.6)";
     ctx.shadowBlur = 8;
@@ -283,39 +348,33 @@ function roundRect(
   ctx.closePath();
 }
 
-function drawVignette(
-  ctx: CanvasRenderingContext2D,
-  viewW: number,
-  viewH: number,
-) {
-  const cx = viewW / 2;
-  const cy = viewH / 2;
-  const r = Math.max(viewW, viewH) * 0.75;
-  const grad = ctx.createRadialGradient(cx, cy, r * 0.4, cx, cy, r);
-  grad.addColorStop(0, "rgba(0,0,0,0)");
-  grad.addColorStop(1, "rgba(0,0,0,0.15)");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, viewW, viewH);
-}
-
 function drawDebugOverlay(
   ctx: CanvasRenderingContext2D,
   viewW: number,
   viewH: number,
-  zoomFit: number,
+  zoom: number,
   art: ArtworkAnchors,
   chair: ChairAnchors,
   showDebug: boolean,
+  dimensionsCm?: DimensionsCm | null,
+  artZoomFactor?: number,
+  seamY: number = SEAM_Y,
 ) {
   if (!showDebug) return;
 
   const lines = [
     `Viewport: ${Math.round(viewW)} × ${Math.round(viewH)} CSS px`,
-    `zoomFit: ${zoomFit.toFixed(4)}`,
+    `zoom: ${zoom.toFixed(4)}`,
     `WORLD: ${WORLD.w} × ${WORLD.h}`,
-    `seamY: ${SEAM_Y}`,
-    `Art bottom → seam: ${art.bottomGap}px  (y=${SEAM_Y - art.bottomGap})`,
-    `Chair floorOffset: ${chair.floorOffset}  (feet at y=${SEAM_Y + chair.floorOffset})`,
+    `seamY: ${seamY}`,
+    ...(dimensionsCm
+      ? [
+          `Dimensions: ${dimensionsCm.widthCm} × ${dimensionsCm.heightCm} cm`,
+          `Art zoom factor: ${artZoomFactor?.toFixed(3) ?? "1"}`,
+        ]
+      : []),
+    `Art: ${art.w.toFixed(0)}×${art.h.toFixed(0)} px  bottomGap: ${art.bottomGap}`,
+    `Chair floorOffset: ${chair.floorOffset}  (feet at y=${seamY + chair.floorOffset})`,
     `DPR: ${window.devicePixelRatio}`,
   ];
 
@@ -356,6 +415,7 @@ interface InSituCanvasProps {
   showDebug?: boolean;
   artworkImageSrc?: string;
   chairImageSrc?: string;
+  dimensionsCm?: DimensionsCm | null;
   artworkAnchors?: Partial<ArtworkAnchors>;
   chairAnchors?: Partial<ChairAnchors>;
 }
@@ -364,6 +424,7 @@ export function InSituCanvas({
   showDebug = false,
   artworkImageSrc = DEFAULT_ARTWORK_SRC,
   chairImageSrc = DEFAULT_CHAIR_SRC,
+  dimensionsCm = null,
   artworkAnchors,
   chairAnchors,
 }: InSituCanvasProps) {
@@ -371,18 +432,7 @@ export function InSituCanvas({
   const noiseRef = useRef<HTMLCanvasElement | null>(null);
   const artImageRef = useRef<HTMLImageElement | null>(null);
   const chairImageRef = useRef<HTMLImageElement | null>(null);
-  const imagesLoadedRef = useRef(false);
-
-  const art: ArtworkAnchors = useMemo(
-    () => ({ ...DEFAULT_ART, ...artworkAnchors }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [artworkAnchors?.cx, artworkAnchors?.w, artworkAnchors?.h, artworkAnchors?.bottomGap],
-  );
-  const chair: ChairAnchors = useMemo(
-    () => ({ ...DEFAULT_CHAIR, ...chairAnchors }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [chairAnchors?.cx, chairAnchors?.w, chairAnchors?.h, chairAnchors?.floorOffset],
-  );
+  const chairLoadedRef = useRef(false);
 
   const render = useCallback(() => {
     const canvas = canvasRef.current;
@@ -401,10 +451,9 @@ export function InSituCanvas({
 
     const zoomFit = Math.min(viewW / WORLD.w, viewH / WORLD.h);
 
-    // Smooth responsive layout: zoom and chair nudge interpolate with viewport width (no snap)
+    // zoom and chair nudge interpolate with viewport width
     const W_MOBILE = 380;
     const W_TABLET = 768;
-    const W_DESKTOP = 1400;
 
     let zoomFactor: number;
     let chairNudge: number;
@@ -425,48 +474,93 @@ export function InSituCanvas({
       chairNudge = 0;
     }
 
-    const zoom = zoomFit * zoomFactor;
+    // Dynamic seam for large art: more visible floor
+    const seamY = getSeamYForDimensions(dimensionsCm);
+
+    // Art anchors (bottomGap depends on viewW for small-art on desktop)
+    let art: ArtworkAnchors = { ...DEFAULT_ART, ...artworkAnchors };
+    if (dimensionsCm) {
+      const { w, h } = dimensionsCmToWorldSize(dimensionsCm);
+      art = {
+        ...art,
+        w,
+        h,
+        bottomGap: getBottomGapForArtHeight(h, dimensionsCm, viewW),
+      };
+    }
+
+    // Chair anchors
+    let chair: ChairAnchors = { ...DEFAULT_CHAIR, ...chairAnchors };
+    if (dimensionsCm) {
+      chair = { ...chair, cx: art.cx + art.w / 2 + CHAIR_GAP_RIGHT_OF_ART };
+    }
     const chairLayout = { ...chair, cx: chair.cx - chairNudge };
 
-    // Clear
+    let artZoomFactor = getArtZoomFactor(dimensionsCm ?? null);
+    // Desktop + small art: slight zoom-in
+    if (viewW >= W_DESKTOP && dimensionsCm && dimensionsCm.widthCm < 200 && dimensionsCm.heightCm < 200) {
+      artZoomFactor *= 1.25;
+    }
+    // Cap zoom-in so we still see the floor
+    const baseZoom = zoomFit * zoomFactor;
+    const maxZoomToSeeFloor = viewH / (2 * (seamY - WORLD.h / 2));
+    const maxArtZoomForFloor = baseZoom > 0 ? maxZoomToSeeFloor / baseZoom : artZoomFactor;
+    artZoomFactor = Math.min(artZoomFactor, maxArtZoomForFloor);
+    let zoom = baseZoom * artZoomFactor;
+    if (viewW <= W_TABLET && art.w > 0) {
+      const zoomToFitArt = (viewW * MOBILE_ART_WIDTH_RATIO) / art.w;
+      zoom = Math.min(zoom, zoomToFitArt);
+    }
+
+    const worldOffX = viewW / 2 - (WORLD.w / 2) * zoom;
+    let worldOffY: number;
+    if (viewW > W_MOBILE && dimensionsCm && (dimensionsCm.widthCm >= 200 || dimensionsCm.heightCm >= 200)) {
+      const focusY = seamY * 0.25;
+      worldOffY = viewH / 2 - focusY * zoom;
+    } else {
+      worldOffY = viewH / 2 - (WORLD.h / 2) * zoom;
+    }
+
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = WALL_COLORS.top;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // World transform
-    const worldOffX = viewW / 2 - (WORLD.w / 2) * zoom;
-    const worldOffY = viewH / 2 - (WORLD.h / 2) * zoom;
     ctx.setTransform(
       dpr * zoom, 0, 0, dpr * zoom,
       dpr * worldOffX,
       dpr * worldOffY,
     );
 
-    // WORLD SPACE
-    drawBackground(ctx, noiseRef.current);
-    drawArtworkFromAnchors(ctx, art, SEAM_Y, artImageRef.current);
-    drawChairFromAnchors(ctx, chairLayout, SEAM_Y, chairImageRef.current);
+    const pad = Math.ceil(Math.max(800, viewW / (2 * zoom) - WORLD.w / 2, viewH / (2 * zoom) - WORLD.h / 2));
+    drawBackground(ctx, noiseRef.current, pad, seamY);
+    drawArtworkFromAnchors(ctx, art, seamY, artImageRef.current);
+    drawChairFromAnchors(ctx, chairLayout, seamY, chairImageRef.current);
 
-    // SCREEN SPACE
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawVignette(ctx, viewW, viewH);
-    drawDebugOverlay(ctx, viewW, viewH, zoom, art, chairLayout, showDebug);
-  }, [art, chair, showDebug]);
+    drawDebugOverlay(ctx, viewW, viewH, zoom, art, chairLayout, showDebug, dimensionsCm ?? undefined, artZoomFactor, seamY);
+  }, [showDebug, dimensionsCm, artworkAnchors, chairAnchors]);
 
   useEffect(() => {
-    if (!imagesLoadedRef.current) {
-      Promise.all([
-        loadImage(artworkImageSrc),
-        loadImage(chairImageSrc),
-      ]).then(([artImg, chairImg]) => {
-        artImageRef.current = artImg;
-        chairImageRef.current = chairImg;
-        imagesLoadedRef.current = true;
+    const src = artworkImageSrc ?? DEFAULT_ARTWORK_SRC;
+    loadImage(src).then((img) => {
+      artImageRef.current = img;
+      render();
+    });
+  }, [artworkImageSrc, render]);
+
+  useEffect(() => {
+    if (!chairLoadedRef.current) {
+      loadImage(chairImageSrc).then((img) => {
+        chairImageRef.current = img;
+        chairLoadedRef.current = true;
         render();
       });
     }
+  }, [chairImageSrc, render]);
 
+  useEffect(() => {
     render();
-
     let rafId: number | null = null;
     const onResize = () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
@@ -481,7 +575,7 @@ export function InSituCanvas({
       window.removeEventListener("resize", onResize);
       if (rafId !== null) cancelAnimationFrame(rafId);
     };
-  }, [render, artworkImageSrc, chairImageSrc]);
+  }, [render]);
 
   return (
     <canvas

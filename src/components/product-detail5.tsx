@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 
-import { cn } from "@/lib/utils";
+import { cn, parseDimensionsString } from "@/lib/utils";
+
+import { Mail, Eye } from "lucide-react";
 
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Button } from "@/components/ui/button";
@@ -17,6 +19,7 @@ const ARTWORK_DETAILS = {
   year: "2023",
   medium: "Oil on canvas",
   dimensions: "96 × 80 cm",
+  imageUrl: "/assets/images/testArtwork.webp",
   description:
     "A large-scale meditation on light and form in the high desert. The work was made in situ over three seasons, responding directly to the shifting conditions of the site. It forms part of the artist’s ongoing series examining the boundary between landscape and abstraction.",
   location: "Building A, Level 2",
@@ -28,6 +31,11 @@ interface ArtworkDetail5Props {
 
 const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
   const [inSituOpen, setInSituOpen] = useState(false);
+
+  const dimensionsCm = useMemo(
+    () => parseDimensionsString(ARTWORK_DETAILS.dimensions),
+    [],
+  );
 
   return (
     <>
@@ -56,12 +64,16 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
                   {ARTWORK_DETAILS.description}
                 </p>
                 <div className="flex flex-col gap-2.5 pt-2">
-                  <Button size="lg">Inquire</Button>
+                  <Button variant="iconBtn" size="lg">
+                    <Mail className="size-4" strokeWidth={1.5} />
+                    Inquire
+                  </Button>
                   <Button
-                    variant="outline"
+                    variant="iconBtn"
                     size="lg"
                     onClick={() => setInSituOpen(true)}
                   >
+                    <Eye className="size-4" strokeWidth={1.5} />
                     View in situ
                   </Button>
                 </div>
@@ -71,12 +83,16 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
         </div>
       </section>
 
-      <InSituModal open={inSituOpen} onOpenChange={setInSituOpen} />
+      <InSituModal
+        open={inSituOpen}
+        onOpenChange={setInSituOpen}
+        dimensionsCm={dimensionsCm ?? undefined}
+        artworkImageUrl={ARTWORK_DETAILS.imageUrl}
+        artworkTitle={ARTWORK_DETAILS.title}
+      />
     </>
   );
 };
-
-const ARTWORK_IMAGE = "/assets/images/testArtwork.webp";
 
 const ArtworkImagePreview = () => (
   <div className="w-full">
@@ -88,7 +104,7 @@ const ArtworkImagePreview = () => (
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="relative w-[85%] h-[85%] drop-shadow-[0_4px_14px_rgba(0,0,0,0.08)]">
           <Image
-            src={ARTWORK_IMAGE}
+            src={ARTWORK_DETAILS.imageUrl}
             alt={ARTWORK_DETAILS.title}
             fill
             className="object-contain object-center"
@@ -136,5 +152,4 @@ const ArtworkMeta = ({
   </dl>
 );
 
-// Keep legacy export name so page.tsx doesn't break
-export { ArtworkDetail5 as ProductDetail5 };
+export default ArtworkDetail5;
