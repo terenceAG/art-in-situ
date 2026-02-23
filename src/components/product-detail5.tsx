@@ -3,14 +3,70 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 
-import { cn, parseDimensionsString } from "@/lib/utils";
+import { cn, parseDimensionsString, type DimensionsCm } from "@/lib/utils";
 
-import { Mail, Eye } from "lucide-react";
+import { Mail, Eye, Settings } from "lucide-react";
 
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { InSituModal } from "@/components/in-situ-modal";
+
+const ARTWORK_SIZE_PRESETS: { label: string; dimensionsCm: DimensionsCm }[] = [
+  { label: "48×40", dimensionsCm: { widthCm: 48, heightCm: 40 } },
+  { label: "96×80", dimensionsCm: { widthCm: 96, heightCm: 80 } },
+  { label: "100×80", dimensionsCm: { widthCm: 100, heightCm: 80 } },
+  { label: "120×100", dimensionsCm: { widthCm: 120, heightCm: 100 } },
+  { label: "150×120", dimensionsCm: { widthCm: 150, heightCm: 120 } },
+  { label: "263×325", dimensionsCm: { widthCm: 263, heightCm: 325 } },
+  { label: "300×400", dimensionsCm: { widthCm: 300, heightCm: 400 } },
+  { label: "400×500", dimensionsCm: { widthCm: 400, heightCm: 500 } },
+  { label: "500×400", dimensionsCm: { widthCm: 500, heightCm: 400 } },
+  { label: "400×300", dimensionsCm: { widthCm: 400, heightCm: 300 } },
+  { label: "300×200", dimensionsCm: { widthCm: 300, heightCm: 200 } },
+];
+
+interface WallColorPreset {
+  id: string;
+  label: string;
+  top: string;
+  bottom: string;
+}
+interface FloorColorPreset {
+  id: string;
+  label: string;
+  top: string;
+  bottom: string;
+}
+
+const WALL_COLOR_PRESETS: WallColorPreset[] = [
+  { id: "warm-white", label: "Warm white", top: "#f8f7f6", bottom: "#f2f0ed" },
+  { id: "cool-white", label: "Cool white", top: "#f5f5f6", bottom: "#e8e8ea" },
+  { id: "warm-gray", label: "Warm grey", top: "#e8e6e4", bottom: "#d8d6d4" },
+  { id: "cool-gray", label: "Cool grey", top: "#e0e0e0", bottom: "#c8c8c8" },
+  { id: "cream", label: "Cream", top: "#f5f0e8", bottom: "#ebe4d9" },
+  { id: "slate", label: "Slate", top: "#8b9298", bottom: "#6b7278" },
+];
+
+const FLOOR_COLOR_PRESETS: FloorColorPreset[] = [
+  { id: "warm-gray", label: "Warm grey", top: "#b8b5b0", bottom: "#9a9792" },
+  { id: "cool-gray", label: "Cool grey", top: "#a8a8a8", bottom: "#888888" },
+  { id: "taupe", label: "Taupe", top: "#a89f94", bottom: "#8a8176" },
+  { id: "oak", label: "Oak", top: "#c4a574", bottom: "#a68554" },
+  { id: "walnut", label: "Walnut", top: "#6b5344", bottom: "#4a3c32" },
+  { id: "charcoal", label: "Charcoal", top: "#5a5a5a", bottom: "#3a3a3a" },
+];
+
+const CHAIR_OPTIONS: { id: string; label: string; src: string }[] = [
+  { id: "chair", label: "Chair 1", src: "/assets/images/chair.png" },
+  { id: "chair2", label: "Chair 2", src: "/assets/images/chair2.png" },
+  { id: "chair4", label: "Chair 4", src: "/assets/images/chair4.png" },
+];
 
 const ARTWORK_DETAILS = {
   id: "1",
@@ -21,8 +77,7 @@ const ARTWORK_DETAILS = {
   dimensions: "96 × 80 cm",
   imageUrl: "/assets/images/testArtwork.webp",
   description:
-    "A large-scale meditation on light and form in the high desert. The work was made in situ over three seasons, responding directly to the shifting conditions of the site. It forms part of the artist’s ongoing series examining the boundary between landscape and abstraction.",
-  location: "Building A, Level 2",
+    "A large-scale meditation on light and form in the high desert. The work was made in situ over three seasons, responding directly to the shifting conditions of the site.",
 };
 
 interface ArtworkDetail5Props {
@@ -31,11 +86,38 @@ interface ArtworkDetail5Props {
 
 const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
   const [inSituOpen, setInSituOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [selectedSizeKey, setSelectedSizeKey] = useState<string>("product");
+  const [selectedWallPresetId, setSelectedWallPresetId] = useState<string>(
+    WALL_COLOR_PRESETS[0].id,
+  );
+  const [selectedFloorPresetId, setSelectedFloorPresetId] = useState<string>(
+    FLOOR_COLOR_PRESETS[0].id,
+  );
+  const [selectedChairId, setSelectedChairId] = useState<string>(
+    CHAIR_OPTIONS[0].id,
+  );
 
   const dimensionsCm = useMemo(
     () => parseDimensionsString(ARTWORK_DETAILS.dimensions),
     [],
   );
+
+  const inSituDimensionsCm =
+    selectedSizeKey === "product"
+      ? dimensionsCm
+      : ARTWORK_SIZE_PRESETS.find((p) => p.label === selectedSizeKey)
+          ?.dimensionsCm ?? dimensionsCm;
+
+  const inSituWallColors = WALL_COLOR_PRESETS.find(
+    (p) => p.id === selectedWallPresetId,
+  ) ?? { top: WALL_COLOR_PRESETS[0].top, bottom: WALL_COLOR_PRESETS[0].bottom };
+  const inSituFloorColors = FLOOR_COLOR_PRESETS.find(
+    (p) => p.id === selectedFloorPresetId,
+  ) ?? { top: FLOOR_COLOR_PRESETS[0].top, bottom: FLOOR_COLOR_PRESETS[0].bottom };
+  const inSituChairSrc =
+    CHAIR_OPTIONS.find((c) => c.id === selectedChairId)?.src ??
+    CHAIR_OPTIONS[0].src;
 
   return (
     <>
@@ -58,24 +140,26 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
                   year={ARTWORK_DETAILS.year}
                   medium={ARTWORK_DETAILS.medium}
                   dimensions={ARTWORK_DETAILS.dimensions}
-                  location={ARTWORK_DETAILS.location}
                 />
                 <p className="text-muted-foreground">
                   {ARTWORK_DETAILS.description}
                 </p>
                 <div className="flex flex-col gap-2.5 pt-2">
-                  <Button variant="iconBtn" size="lg">
-                    <Mail className="size-4" strokeWidth={1.5} />
-                    Inquire
+
+                  <Button variant="iconBtn" size="sm">
+                    <Mail className="size-5" strokeWidth={1} />
+                    Inquire about this artwork
                   </Button>
+
                   <Button
                     variant="iconBtn"
-                    size="lg"
+                    size="sm"
                     onClick={() => setInSituOpen(true)}
                   >
-                    <Eye className="size-4" strokeWidth={1.5} />
+                    <Eye className="size-5" strokeWidth={1} />
                     View in situ
                   </Button>
+
                 </div>
               </div>
             </div>
@@ -83,11 +167,130 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
         </div>
       </section>
 
+      <button
+        type="button"
+        onClick={() => setSettingsOpen(true)}
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-medium text-background shadow-lg transition-colors hover:bg-foreground/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        aria-label="Open preview settings"
+      >
+        <Settings className="size-4" aria-hidden />
+        Settings
+      </button>
+
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="sm:max-w-md" showCloseButton>
+          <DialogTitle className="sr-only">Preview settings</DialogTitle>
+          <div className="flex flex-col gap-4 pt-2">
+            <label htmlFor="artwork-size" className="text-sm font-medium">
+              Artwork Size
+            </label>
+            <select
+              id="artwork-size"
+              value={selectedSizeKey}
+              onChange={(e) => setSelectedSizeKey(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              <option value="product">
+                Product size ({ARTWORK_DETAILS.dimensions})
+              </option>
+              {ARTWORK_SIZE_PRESETS.map((preset) => (
+                <option key={preset.label} value={preset.label}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Wall colour</span>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Wall colour presets">
+                {WALL_COLOR_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => setSelectedWallPresetId(preset.id)}
+                    title={preset.label}
+                    aria-label={preset.label}
+                    aria-pressed={selectedWallPresetId === preset.id}
+                    className={cn(
+                      "size-10 shrink-0 rounded-md border-2 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                      selectedWallPresetId === preset.id
+                        ? "border-foreground ring-2 ring-foreground/20"
+                        : "border-transparent hover:border-muted-foreground/30",
+                    )}
+                    style={{
+                      background: `linear-gradient(to bottom, ${preset.top}, ${preset.bottom})`,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Floor colour</span>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Floor colour presets">
+                {FLOOR_COLOR_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => setSelectedFloorPresetId(preset.id)}
+                    title={preset.label}
+                    aria-label={preset.label}
+                    aria-pressed={selectedFloorPresetId === preset.id}
+                    className={cn(
+                      "size-10 shrink-0 rounded-md border-2 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                      selectedFloorPresetId === preset.id
+                        ? "border-foreground ring-2 ring-foreground/20"
+                        : "border-transparent hover:border-muted-foreground/30",
+                    )}
+                    style={{
+                      background: `linear-gradient(to bottom, ${preset.top}, ${preset.bottom})`,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Chair</span>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Chair options">
+                {CHAIR_OPTIONS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setSelectedChairId(option.id)}
+                    title={option.label}
+                    aria-label={option.label}
+                    aria-pressed={selectedChairId === option.id}
+                    className={cn(
+                      "size-10 shrink-0 overflow-hidden rounded-md border-2 bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                      selectedChairId === option.id
+                        ? "border-foreground ring-2 ring-foreground/20"
+                        : "border-transparent hover:border-muted-foreground/30",
+                    )}
+                  >
+                    <Image
+                      src={option.src}
+                      alt=""
+                      className="h-full w-full object-contain"
+                      width={40}
+                      height={40}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <InSituModal
         open={inSituOpen}
         onOpenChange={setInSituOpen}
-        dimensionsCm={dimensionsCm ?? undefined}
+        dimensionsCm={inSituDimensionsCm ?? undefined}
         artworkImageUrl={ARTWORK_DETAILS.imageUrl}
+        wallColors={inSituWallColors}
+        floorColors={inSituFloorColors}
+        chairImageSrc={inSituChairSrc}
         artworkTitle={ARTWORK_DETAILS.title}
       />
     </>
@@ -121,14 +324,12 @@ interface ArtworkMetaProps {
   year: string;
   medium: string;
   dimensions: string;
-  location?: string;
 }
 
 const ArtworkMeta = ({
   year,
   medium,
   dimensions,
-  location,
 }: ArtworkMetaProps) => (
   <dl className="grid grid-cols-1 gap-2 text-sm">
     <div className="flex justify-between gap-4 border-b border-border pb-2">
@@ -143,12 +344,6 @@ const ArtworkMeta = ({
       <dt className="font-light text-muted-foreground">Dimensions</dt>
       <dd className="text-right">{dimensions}</dd>
     </div>
-    {location && (
-      <div className="flex justify-between gap-4 border-b border-border pb-2">
-        <dt className="font-light text-muted-foreground">Location</dt>
-        <dd className="text-right">{location}</dd>
-      </div>
-    )}
   </dl>
 );
 
