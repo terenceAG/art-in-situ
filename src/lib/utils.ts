@@ -5,7 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// In-situ: parse dimensions string "96 × 80 cm" -> { widthCm, heightCm }
 export interface DimensionsCm {
   widthCm: number;
   heightCm: number;

@@ -5,7 +5,7 @@ export const useMediaQuery = (query: string): boolean => {
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(query);
-    setMatches(mediaQuery.matches);
+    queueMicrotask(() => setMatches(mediaQuery.matches));
 
     const handleChange = () => setMatches(mediaQuery.matches);
     mediaQuery.addEventListener("change", handleChange);

@@ -6,7 +6,7 @@ import { useEffect, useRef, useCallback } from "react";
 const WORLD = { w: 1600, h: 900 } as const;
 const SEAM_Y = 720; 
 
-// Realistic color palettes (parameterized)
+// Realistic color palettes
 const WALL_COLORS = {
   top: "#f8f7f6",
   bottom: "#f2f0ed",
@@ -144,12 +144,38 @@ function createNoiseTexture(size: number = 256): HTMLCanvasElement {
 
 // DRAWING HELPERS
 
+function darkenHex(hex: string, factor: number): string {
+  const m = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+  if (!m) return hex;
+  let r = parseInt(m[1], 16);
+  let g = parseInt(m[2], 16);
+  let b = parseInt(m[3], 16);
+  r = Math.round(r * factor);
+  g = Math.round(g * factor);
+  b = Math.round(b * factor);
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+
+interface WallColors {
+  top: string;
+  bottom: string;
+}
+interface FloorColors {
+  top: string;
+  bottom: string;
+}
+
 function drawBackground(
   ctx: CanvasRenderingContext2D,
   noiseCanvas: HTMLCanvasElement,
   pad: number = 800,
   seamY: number = SEAM_Y,
+  wallColors?: WallColors | null,
+  floorColors?: FloorColors | null,
 ) {
+  const wall = wallColors ?? WALL_COLORS;
+  const floor = floorColors ?? FLOOR_COLORS;
+
   const PAD = pad;
   const L = -PAD;
   const R = WORLD.w + PAD;
@@ -161,16 +187,16 @@ function drawBackground(
 
   // Wall gradient
   const wallGrad = ctx.createLinearGradient(0, T, 0, seamY);
-  wallGrad.addColorStop(0, WALL_COLORS.top);
-  wallGrad.addColorStop(0.7, WALL_COLORS.bottom);
-  wallGrad.addColorStop(1, WALL_COLORS.bottom);
+  wallGrad.addColorStop(0, wall.top);
+  wallGrad.addColorStop(0.7, wall.bottom);
+  wallGrad.addColorStop(1, wall.bottom);
   ctx.fillStyle = wallGrad;
   ctx.fillRect(L, T, W, wallH);
 
   // Floor gradient
   const floorGrad = ctx.createLinearGradient(0, seamY, 0, B);
-  floorGrad.addColorStop(0, FLOOR_COLORS.top);
-  floorGrad.addColorStop(1, FLOOR_COLORS.bottom);
+  floorGrad.addColorStop(0, floor.top);
+  floorGrad.addColorStop(1, floor.bottom);
   ctx.fillStyle = floorGrad;
   ctx.fillRect(L, seamY, W, floorH);
 
@@ -185,9 +211,12 @@ function drawBackground(
   ctx.fillRect(L, seamY - 30, W, 70);
   ctx.restore();
 
-  // Baseboard
+  // Baseboard darken
   const baseboardH = 8;
-  ctx.fillStyle = BASEBOARD_COLOR;
+  const baseboardColor = floorColors
+    ? darkenHex(floor.bottom, 0.90)
+    : BASEBOARD_COLOR;
+  ctx.fillStyle = baseboardColor;
   ctx.fillRect(L, seamY - baseboardH, W, baseboardH);
 
   ctx.fillStyle = "rgba(255,255,255,0.12)";
@@ -411,11 +440,15 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
 
 // REACT COMPONENT
 
+export type { WallColors, FloorColors };
+
 interface InSituCanvasProps {
   showDebug?: boolean;
   artworkImageSrc?: string;
   chairImageSrc?: string;
   dimensionsCm?: DimensionsCm | null;
+  wallColors?: WallColors | null;
+  floorColors?: FloorColors | null;
   artworkAnchors?: Partial<ArtworkAnchors>;
   chairAnchors?: Partial<ChairAnchors>;
 }
@@ -425,6 +458,8 @@ export function InSituCanvas({
   artworkImageSrc = DEFAULT_ARTWORK_SRC,
   chairImageSrc = DEFAULT_CHAIR_SRC,
   dimensionsCm = null,
+  wallColors = null,
+  floorColors = null,
   artworkAnchors,
   chairAnchors,
 }: InSituCanvasProps) {
@@ -432,7 +467,6 @@ export function InSituCanvas({
   const noiseRef = useRef<HTMLCanvasElement | null>(null);
   const artImageRef = useRef<HTMLImageElement | null>(null);
   const chairImageRef = useRef<HTMLImageElement | null>(null);
-  const chairLoadedRef = useRef(false);
 
   const render = useCallback(() => {
     const canvas = canvasRef.current;
@@ -497,11 +531,11 @@ export function InSituCanvas({
     const chairLayout = { ...chair, cx: chair.cx - chairNudge };
 
     let artZoomFactor = getArtZoomFactor(dimensionsCm ?? null);
-    // Desktop + small art: slight zoom-in
+    // Desktop and small artworks: slight zoom-in
     if (viewW >= W_DESKTOP && dimensionsCm && dimensionsCm.widthCm < 200 && dimensionsCm.heightCm < 200) {
       artZoomFactor *= 1.25;
     }
-    // Cap zoom-in so we still see the floor
+    // Cap zoom-in
     const baseZoom = zoomFit * zoomFactor;
     const maxZoomToSeeFloor = viewH / (2 * (seamY - WORLD.h / 2));
     const maxArtZoomForFloor = baseZoom > 0 ? maxZoomToSeeFloor / baseZoom : artZoomFactor;
@@ -521,9 +555,11 @@ export function InSituCanvas({
       worldOffY = viewH / 2 - (WORLD.h / 2) * zoom;
     }
 
+    const effectiveWall = wallColors ?? WALL_COLORS;
+
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = WALL_COLORS.top;
+    ctx.fillStyle = effectiveWall.top;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.setTransform(
@@ -533,13 +569,13 @@ export function InSituCanvas({
     );
 
     const pad = Math.ceil(Math.max(800, viewW / (2 * zoom) - WORLD.w / 2, viewH / (2 * zoom) - WORLD.h / 2));
-    drawBackground(ctx, noiseRef.current, pad, seamY);
+    drawBackground(ctx, noiseRef.current, pad, seamY, wallColors, floorColors);
     drawArtworkFromAnchors(ctx, art, seamY, artImageRef.current);
     drawChairFromAnchors(ctx, chairLayout, seamY, chairImageRef.current);
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawDebugOverlay(ctx, viewW, viewH, zoom, art, chairLayout, showDebug, dimensionsCm ?? undefined, artZoomFactor, seamY);
-  }, [showDebug, dimensionsCm, artworkAnchors, chairAnchors]);
+  }, [showDebug, dimensionsCm, wallColors, floorColors, artworkAnchors, chairAnchors]);
 
   useEffect(() => {
     const src = artworkImageSrc ?? DEFAULT_ARTWORK_SRC;
@@ -550,13 +586,11 @@ export function InSituCanvas({
   }, [artworkImageSrc, render]);
 
   useEffect(() => {
-    if (!chairLoadedRef.current) {
-      loadImage(chairImageSrc).then((img) => {
-        chairImageRef.current = img;
-        chairLoadedRef.current = true;
-        render();
-      });
-    }
+    const src = chairImageSrc ?? DEFAULT_CHAIR_SRC;
+    loadImage(src).then((img) => {
+      chairImageRef.current = img;
+      render();
+    });
   }, [chairImageSrc, render]);
 
   useEffect(() => {
