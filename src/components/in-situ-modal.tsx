@@ -14,6 +14,7 @@ interface InSituModalProps {
   artworkImageUrl?: string | null;
   wallColors?: WallColors | null;
   floorColors?: FloorColors | null;
+  showChair?: boolean;
   chairImageSrc?: string | null;
   artworkTitle?: string;
 }
@@ -25,6 +26,7 @@ export function InSituModal({
   artworkImageUrl = null,
   wallColors = null,
   floorColors = null,
+  showChair = true,
   chairImageSrc = null,
   artworkTitle,
 }: InSituModalProps) {
@@ -76,6 +78,7 @@ export function InSituModal({
               artworkImageSrc={artworkImageUrl ?? undefined}
               wallColors={wallColors}
               floorColors={floorColors}
+              showChair={showChair}
               chairImageSrc={chairImageSrc ?? undefined}
             />
           </div>

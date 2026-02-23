@@ -5,7 +5,7 @@ import Image from "next/image";
 
 import { cn, parseDimensionsString, type DimensionsCm } from "@/lib/utils";
 
-import { Mail, Eye, Settings } from "lucide-react";
+import { Mail, Eye, Settings, Ban } from "lucide-react";
 
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Button } from "@/components/ui/button";
@@ -56,10 +56,11 @@ const FLOOR_COLOR_PRESETS: FloorColorPreset[] = [
   { id: "charcoal", label: "Charcoal", top: "#5a5a5a", bottom: "#3a3a3a" },
 ];
 
-const CHAIR_OPTIONS: { id: string; label: string; src: string }[] = [
+const CHAIR_OPTIONS: { id: string; label: string; src?: string }[] = [
   { id: "chair", label: "Chair 1", src: "/assets/images/chair.png" },
   { id: "chair2", label: "Chair 2", src: "/assets/images/chair2.png" },
   { id: "chair4", label: "Chair 4", src: "/assets/images/chair4.png" },
+  { id: "none", label: "No chair" },
 ];
 
 const ARTWORK_DETAILS = {
@@ -109,9 +110,10 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
   const inSituFloorColors = FLOOR_COLOR_PRESETS.find(
     (p) => p.id === selectedFloorPresetId,
   ) ?? { top: FLOOR_COLOR_PRESETS[0].top, bottom: FLOOR_COLOR_PRESETS[0].bottom };
-  const inSituChairSrc =
-    CHAIR_OPTIONS.find((c) => c.id === selectedChairId)?.src ??
-    CHAIR_OPTIONS[0].src;
+  const showChair = selectedChairId !== "none";
+  const inSituChairSrc = showChair
+    ? CHAIR_OPTIONS.find((c) => c.id === selectedChairId)?.src ?? CHAIR_OPTIONS[0].src
+    : undefined;
 
   return (
     <>
@@ -256,19 +258,25 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
                     aria-label={option.label}
                     aria-pressed={selectedChairId === option.id}
                     className={cn(
-                      "size-10 shrink-0 overflow-hidden rounded-md border-2 bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                      "size-10 shrink-0 overflow-hidden rounded-md border-2 bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex items-center justify-center",
                       selectedChairId === option.id
                         ? "border-foreground ring-2 ring-foreground/20"
                         : "border-transparent hover:border-muted-foreground/30",
                     )}
                   >
-                    <Image
-                      src={option.src}
-                      alt=""
-                      className="h-full w-full object-contain"
-                      width={40}
-                      height={40}
-                    />
+                    {option.id === "none" ? (
+                      <Ban className="h-5 w-5 shrink-0 text-gray-400" />
+                    ) : (
+                      option.src && (
+                        <Image
+                          src={option.src}
+                          alt=""
+                          className="h-full w-full object-contain"
+                          width={40}
+                          height={40}
+                        />
+                      )
+                    )}
                   </button>
                 ))}
               </div>
@@ -284,6 +292,7 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
         artworkImageUrl={ARTWORK_DETAILS.imageUrl}
         wallColors={inSituWallColors}
         floorColors={inSituFloorColors}
+        showChair={showChair}
         chairImageSrc={inSituChairSrc}
         artworkTitle={ARTWORK_DETAILS.title}
       />
