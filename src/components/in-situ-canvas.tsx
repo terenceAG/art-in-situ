@@ -445,6 +445,7 @@ export type { WallColors, FloorColors };
 interface InSituCanvasProps {
   showDebug?: boolean;
   artworkImageSrc?: string;
+  showChair?: boolean;
   chairImageSrc?: string;
   dimensionsCm?: DimensionsCm | null;
   wallColors?: WallColors | null;
@@ -456,6 +457,7 @@ interface InSituCanvasProps {
 export function InSituCanvas({
   showDebug = false,
   artworkImageSrc = DEFAULT_ARTWORK_SRC,
+  showChair = true,
   chairImageSrc = DEFAULT_CHAIR_SRC,
   dimensionsCm = null,
   wallColors = null,
@@ -531,11 +533,9 @@ export function InSituCanvas({
     const chairLayout = { ...chair, cx: chair.cx - chairNudge };
 
     let artZoomFactor = getArtZoomFactor(dimensionsCm ?? null);
-    // Desktop and small artworks: slight zoom-in
     if (viewW >= W_DESKTOP && dimensionsCm && dimensionsCm.widthCm < 200 && dimensionsCm.heightCm < 200) {
       artZoomFactor *= 1.25;
     }
-    // Desktop: 263×325, 300×400 use same zoom and floor as 400×500 (cap zoom to match)
     if (viewW >= W_DESKTOP && dimensionsCm) {
       const longEdge = Math.max(dimensionsCm.widthCm, dimensionsCm.heightCm);
       const shortEdge = Math.min(dimensionsCm.widthCm, dimensionsCm.heightCm);
@@ -579,11 +579,13 @@ export function InSituCanvas({
     const pad = Math.ceil(Math.max(800, viewW / (2 * zoom) - WORLD.w / 2, viewH / (2 * zoom) - WORLD.h / 2));
     drawBackground(ctx, noiseRef.current, pad, seamY, wallColors, floorColors);
     drawArtworkFromAnchors(ctx, art, seamY, artImageRef.current);
-    drawChairFromAnchors(ctx, chairLayout, seamY, chairImageRef.current);
+    if (showChair) {
+      drawChairFromAnchors(ctx, chairLayout, seamY, chairImageRef.current);
+    }
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawDebugOverlay(ctx, viewW, viewH, zoom, art, chairLayout, showDebug, dimensionsCm ?? undefined, artZoomFactor, seamY);
-  }, [showDebug, dimensionsCm, wallColors, floorColors, artworkAnchors, chairAnchors]);
+  }, [showDebug, showChair, dimensionsCm, wallColors, floorColors, artworkAnchors, chairAnchors]);
 
   useEffect(() => {
     const src = artworkImageSrc ?? DEFAULT_ARTWORK_SRC;
@@ -594,12 +596,17 @@ export function InSituCanvas({
   }, [artworkImageSrc, render]);
 
   useEffect(() => {
+    if (!showChair) {
+      chairImageRef.current = null;
+      render();
+      return;
+    }
     const src = chairImageSrc ?? DEFAULT_CHAIR_SRC;
     loadImage(src).then((img) => {
       chairImageRef.current = img;
       render();
     });
-  }, [chairImageSrc, render]);
+  }, [showChair, chairImageSrc, render]);
 
   useEffect(() => {
     render();
