@@ -535,6 +535,14 @@ export function InSituCanvas({
     if (viewW >= W_DESKTOP && dimensionsCm && dimensionsCm.widthCm < 200 && dimensionsCm.heightCm < 200) {
       artZoomFactor *= 1.25;
     }
+    // Desktop: 263×325, 300×400 use same zoom and floor as 400×500 (cap zoom to match)
+    if (viewW >= W_DESKTOP && dimensionsCm) {
+      const longEdge = Math.max(dimensionsCm.widthCm, dimensionsCm.heightCm);
+      const shortEdge = Math.min(dimensionsCm.widthCm, dimensionsCm.heightCm);
+      if (longEdge >= 263 && shortEdge >= 200) {
+        artZoomFactor = Math.min(artZoomFactor, ART_ZOOM_FACTOR_MIN);
+      }
+    }
     // Cap zoom-in
     const baseZoom = zoomFit * zoomFactor;
     const maxZoomToSeeFloor = viewH / (2 * (seamY - WORLD.h / 2));

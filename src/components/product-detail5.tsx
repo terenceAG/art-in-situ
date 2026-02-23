@@ -46,9 +46,6 @@ interface FloorColorPreset {
 
 const WALL_COLOR_PRESETS: WallColorPreset[] = [
   { id: "warm-white", label: "Warm white", top: "#f8f7f6", bottom: "#f2f0ed" },
-  { id: "cool-white", label: "Cool white", top: "#f5f5f6", bottom: "#e8e8ea" },
-  { id: "warm-gray", label: "Warm grey", top: "#e8e6e4", bottom: "#d8d6d4" },
-  { id: "cool-gray", label: "Cool grey", top: "#e0e0e0", bottom: "#c8c8c8" },
   { id: "cream", label: "Cream", top: "#f5f0e8", bottom: "#ebe4d9" },
   { id: "slate", label: "Slate", top: "#8b9298", bottom: "#6b7278" },
 ];
@@ -56,9 +53,6 @@ const WALL_COLOR_PRESETS: WallColorPreset[] = [
 const FLOOR_COLOR_PRESETS: FloorColorPreset[] = [
   { id: "warm-gray", label: "Warm grey", top: "#b8b5b0", bottom: "#9a9792" },
   { id: "cool-gray", label: "Cool grey", top: "#a8a8a8", bottom: "#888888" },
-  { id: "taupe", label: "Taupe", top: "#a89f94", bottom: "#8a8176" },
-  { id: "oak", label: "Oak", top: "#c4a574", bottom: "#a68554" },
-  { id: "walnut", label: "Walnut", top: "#6b5344", bottom: "#4a3c32" },
   { id: "charcoal", label: "Charcoal", top: "#5a5a5a", bottom: "#3a3a3a" },
 ];
 
