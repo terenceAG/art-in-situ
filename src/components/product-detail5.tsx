@@ -5,7 +5,7 @@ import Image from "next/image";
 
 import { cn, parseDimensionsString, type DimensionsCm } from "@/lib/utils";
 
-import { Mail, Eye, Settings, Ban } from "lucide-react";
+import { Mail, Eye, Settings, Ban, Pen } from "lucide-react";
 
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Button } from "@/components/ui/button";
@@ -17,18 +17,19 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { InSituModal } from "@/components/in-situ-modal";
 
+// Labels: art industry convention height × width (cm)
 const ARTWORK_SIZE_PRESETS: { label: string; dimensionsCm: DimensionsCm }[] = [
-  { label: "48×40", dimensionsCm: { widthCm: 48, heightCm: 40 } },
-  { label: "96×80", dimensionsCm: { widthCm: 96, heightCm: 80 } },
-  { label: "100×80", dimensionsCm: { widthCm: 100, heightCm: 80 } },
-  { label: "120×100", dimensionsCm: { widthCm: 120, heightCm: 100 } },
-  { label: "150×120", dimensionsCm: { widthCm: 150, heightCm: 120 } },
-  { label: "263×325", dimensionsCm: { widthCm: 263, heightCm: 325 } },
-  { label: "300×400", dimensionsCm: { widthCm: 300, heightCm: 400 } },
-  { label: "400×500", dimensionsCm: { widthCm: 400, heightCm: 500 } },
-  { label: "500×400", dimensionsCm: { widthCm: 500, heightCm: 400 } },
-  { label: "400×300", dimensionsCm: { widthCm: 400, heightCm: 300 } },
-  { label: "300×200", dimensionsCm: { widthCm: 300, heightCm: 200 } },
+  { label: "40×48", dimensionsCm: { widthCm: 48, heightCm: 40 } },
+  { label: "80×96", dimensionsCm: { widthCm: 96, heightCm: 80 } },
+  { label: "80×100", dimensionsCm: { widthCm: 100, heightCm: 80 } },
+  { label: "100×120", dimensionsCm: { widthCm: 120, heightCm: 100 } },
+  { label: "120×150", dimensionsCm: { widthCm: 150, heightCm: 120 } },
+  { label: "325×263", dimensionsCm: { widthCm: 263, heightCm: 325 } },
+  { label: "400×300", dimensionsCm: { widthCm: 300, heightCm: 400 } },
+  { label: "500×400", dimensionsCm: { widthCm: 400, heightCm: 500 } },
+  { label: "400×500", dimensionsCm: { widthCm: 500, heightCm: 400 } },
+  { label: "300×400", dimensionsCm: { widthCm: 400, heightCm: 300 } },
+  { label: "200×300", dimensionsCm: { widthCm: 300, heightCm: 200 } },
 ];
 
 interface WallColorPreset {
@@ -52,14 +53,23 @@ const WALL_COLOR_PRESETS: WallColorPreset[] = [
 
 const FLOOR_COLOR_PRESETS: FloorColorPreset[] = [
   { id: "warm-gray", label: "Warm grey", top: "#b8b5b0", bottom: "#9a9792" },
-  { id: "cool-gray", label: "Cool grey", top: "#a8a8a8", bottom: "#888888" },
-  { id: "charcoal", label: "Charcoal", top: "#5a5a5a", bottom: "#3a3a3a" },
+  { id: "oak", label: "Oak", top: "#897148", bottom: "#897148" },
+  { id: "walnut", label: "Walnut", top: "#513f29", bottom: "#513f29" },
+  { id: "charcoal", label: "Charcoal", top: "#4b4b4b", bottom: "#2b2b2b" },
+];
+
+const FLOOR_TEXTURE_OPTIONS: {
+  id: "none" | "wood-planks" | "polished-concrete";
+  label: string;
+}[] = [
+  { id: "none", label: "None" },
+  { id: "wood-planks", label: "Wood planks" },
+  { id: "polished-concrete", label: "Polished concrete" },
 ];
 
 const CHAIR_OPTIONS: { id: string; label: string; src?: string }[] = [
-  { id: "chair", label: "Chair 1", src: "/assets/images/chair.png" },
   { id: "chair2", label: "Chair 2", src: "/assets/images/chair2.png" },
-  { id: "chair4", label: "Chair 4", src: "/assets/images/chair4.png" },
+  { id: "chair1", label: "Chair 1", src: "/assets/images/chair1.png" },
   { id: "none", label: "No chair" },
 ];
 
@@ -92,6 +102,15 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
   const [selectedChairId, setSelectedChairId] = useState<string>(
     CHAIR_OPTIONS[0].id,
   );
+  const [customWallColor, setCustomWallColor] = useState<string>(
+    WALL_COLOR_PRESETS[0].top,
+  );
+  const [customFloorColor, setCustomFloorColor] = useState<string>(
+    FLOOR_COLOR_PRESETS[0].top,
+  );
+  const [selectedFloorTextureId, setSelectedFloorTextureId] = useState<
+    "none" | "wood-planks" | "polished-concrete"
+  >("none");
 
   const dimensionsCm = useMemo(
     () => parseDimensionsString(ARTWORK_DETAILS.dimensions),
@@ -104,12 +123,20 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
       : ARTWORK_SIZE_PRESETS.find((p) => p.label === selectedSizeKey)
           ?.dimensionsCm ?? dimensionsCm;
 
-  const inSituWallColors = WALL_COLOR_PRESETS.find(
-    (p) => p.id === selectedWallPresetId,
-  ) ?? { top: WALL_COLOR_PRESETS[0].top, bottom: WALL_COLOR_PRESETS[0].bottom };
-  const inSituFloorColors = FLOOR_COLOR_PRESETS.find(
-    (p) => p.id === selectedFloorPresetId,
-  ) ?? { top: FLOOR_COLOR_PRESETS[0].top, bottom: FLOOR_COLOR_PRESETS[0].bottom };
+  const inSituWallColors =
+    selectedWallPresetId === "custom"
+      ? { top: customWallColor, bottom: customWallColor }
+      : WALL_COLOR_PRESETS.find((p) => p.id === selectedWallPresetId) ?? {
+          top: WALL_COLOR_PRESETS[0].top,
+          bottom: WALL_COLOR_PRESETS[0].bottom,
+        };
+  const inSituFloorColors =
+    selectedFloorPresetId === "custom"
+      ? { top: customFloorColor, bottom: customFloorColor }
+      : FLOOR_COLOR_PRESETS.find((p) => p.id === selectedFloorPresetId) ?? {
+          top: FLOOR_COLOR_PRESETS[0].top,
+          bottom: FLOOR_COLOR_PRESETS[0].bottom,
+        };
   const showChair = selectedChairId !== "none";
   const inSituChairSrc = showChair
     ? CHAIR_OPTIONS.find((c) => c.id === selectedChairId)?.src ?? CHAIR_OPTIONS[0].src
@@ -198,7 +225,7 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
 
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium">Wall colour</span>
-              <div className="flex flex-wrap gap-2" role="group" aria-label="Wall colour presets">
+              <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Wall colour presets">
                 {WALL_COLOR_PRESETS.map((preset) => (
                   <button
                     key={preset.id}
@@ -218,12 +245,38 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
                     }}
                   />
                 ))}
+                <label
+                  className={cn(
+                    "relative block size-10 shrink-0 cursor-pointer overflow-hidden rounded-md border-2 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+                    selectedWallPresetId === "custom"
+                      ? "border-foreground ring-2 ring-foreground/20"
+                      : "border-transparent hover:border-muted-foreground/30",
+                  )}
+                  aria-label="Custom wall colour"
+                >
+                  <input
+                    type="color"
+                    value={customWallColor}
+                    onChange={(e) => {
+                      setSelectedWallPresetId("custom");
+                      setCustomWallColor(e.target.value);
+                    }}
+                    className="sr-only size-10"
+                  />
+                  <span
+                    className="block size-full rounded-md"
+                    style={{ background: customWallColor }}
+                  />
+                  <span className="absolute inset-0 flex items-center justify-center rounded-md text-white drop-shadow-[0_0_1px_rgba(0,0,0,0.8)] pointer-events-none">
+                    <Pen className="size-4" strokeWidth={2} />
+                  </span>
+                </label>
               </div>
             </div>
 
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium">Floor colour</span>
-              <div className="flex flex-wrap gap-2" role="group" aria-label="Floor colour presets">
+              <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Floor colour presets">
                 {FLOOR_COLOR_PRESETS.map((preset) => (
                   <button
                     key={preset.id}
@@ -242,6 +295,60 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
                       background: `linear-gradient(to bottom, ${preset.top}, ${preset.bottom})`,
                     }}
                   />
+                ))}
+                <label
+                  className={cn(
+                    "relative block size-10 shrink-0 cursor-pointer overflow-hidden rounded-md border-2 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+                    selectedFloorPresetId === "custom"
+                      ? "border-foreground ring-2 ring-foreground/20"
+                      : "border-transparent hover:border-muted-foreground/30",
+                  )}
+                  aria-label="Custom floor colour"
+                >
+                  <input
+                    type="color"
+                    value={customFloorColor}
+                    onChange={(e) => {
+                      setSelectedFloorPresetId("custom");
+                      setCustomFloorColor(e.target.value);
+                    }}
+                    className="sr-only size-10"
+                  />
+                  <span
+                    className="block size-full rounded-md"
+                    style={{ background: customFloorColor }}
+                  />
+                  <span className="absolute inset-0 flex items-center justify-center rounded-md text-white drop-shadow-[0_0_1px_rgba(0,0,0,0.8)] pointer-events-none">
+                    <Pen className="size-4" strokeWidth={2} />
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Floor texture</span>
+              <div
+                className="flex flex-wrap gap-2"
+                role="group"
+                aria-label="Floor texture"
+              >
+                {FLOOR_TEXTURE_OPTIONS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setSelectedFloorTextureId(option.id)}
+                    title={option.label}
+                    aria-label={option.label}
+                    aria-pressed={selectedFloorTextureId === option.id}
+                    className={cn(
+                      "rounded-md border-2 px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                      selectedFloorTextureId === option.id
+                        ? "border-foreground bg-muted ring-2 ring-foreground/20"
+                        : "border-transparent bg-muted/50 hover:border-muted-foreground/30",
+                    )}
+                  >
+                    {option.label}
+                  </button>
                 ))}
               </div>
             </div>
@@ -292,6 +399,7 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
         artworkImageUrl={ARTWORK_DETAILS.imageUrl}
         wallColors={inSituWallColors}
         floorColors={inSituFloorColors}
+        floorTexture={selectedFloorTextureId}
         showChair={showChair}
         chairImageSrc={inSituChairSrc}
         artworkTitle={ARTWORK_DETAILS.title}

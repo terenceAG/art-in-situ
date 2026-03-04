@@ -4,9 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
 
-import { InSituCanvas, type WallColors, type FloorColors } from "./in-situ-canvas";
+import { InSituCanvas, type WallColors, type FloorColors, type FloorTextureId } from "./in-situ-canvas";
 import type { DimensionsCm } from "@/lib/utils";
 
+// Props for the in situ modal
 interface InSituModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -14,11 +15,13 @@ interface InSituModalProps {
   artworkImageUrl?: string | null;
   wallColors?: WallColors | null;
   floorColors?: FloorColors | null;
+  floorTexture?: FloorTextureId;
   showChair?: boolean;
   chairImageSrc?: string | null;
   artworkTitle?: string;
 }
 
+// In situ modal component
 export function InSituModal({
   open,
   onOpenChange,
@@ -26,18 +29,21 @@ export function InSituModal({
   artworkImageUrl = null,
   wallColors = null,
   floorColors = null,
+  floorTexture = "none",
   showChair = true,
   chairImageSrc = null,
   artworkTitle,
 }: InSituModalProps) {
   const [showDebug, setShowDebug] = useState(false);
 
+  // Handle key down event
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === "d" || e.key === "D") {
       setShowDebug((prev) => !prev);
     }
   }, []);
 
+  // Add event listener for key down event
   useEffect(() => {
     if (open) {
       window.addEventListener("keydown", handleKeyDown);
@@ -78,6 +84,7 @@ export function InSituModal({
               artworkImageSrc={artworkImageUrl ?? undefined}
               wallColors={wallColors}
               floorColors={floorColors}
+              floorTexture={floorTexture}
               showChair={showChair}
               chairImageSrc={chairImageSrc ?? undefined}
             />
