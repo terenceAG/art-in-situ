@@ -16,8 +16,9 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { InSituModal } from "@/components/in-situ-modal";
+import { makeFramePreviewLShape } from "@/components/in-situ-canvas";
 
-// Labels: art industry convention height × width (cm)
+// Height × width (cm), art industry convention
 const ARTWORK_SIZE_PRESETS: { label: string; dimensionsCm: DimensionsCm }[] = [
   { label: "40×48", dimensionsCm: { widthCm: 48, heightCm: 40 } },
   { label: "80×96", dimensionsCm: { widthCm: 96, heightCm: 80 } },
@@ -67,6 +68,17 @@ const FLOOR_TEXTURE_OPTIONS: {
   { id: "polished-concrete", label: "Polished concrete" },
 ];
 
+const FRAME_OPTIONS: {
+  id: "none" | "gold-classic" | "black-modern";
+  label: string;
+}[] = [
+  { id: "none", label: "No frame" },
+  { id: "gold-classic", label: "Classic gold" },
+  { id: "black-modern", label: "Modern black" },
+];
+
+const FRAME_PREVIEW_BOX_SIZE = 80;
+
 const CHAIR_OPTIONS: { id: string; label: string; src?: string }[] = [
   { id: "chair2", label: "Chair 2", src: "/assets/images/chair2.png" },
   { id: "chair1", label: "Chair 1", src: "/assets/images/chair1.png" },
@@ -111,6 +123,9 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
   const [selectedFloorTextureId, setSelectedFloorTextureId] = useState<
     "none" | "wood-planks" | "polished-concrete"
   >("none");
+  const [selectedFrameId, setSelectedFrameId] = useState<
+    "none" | "gold-classic" | "black-modern"
+  >("none");
 
   const dimensionsCm = useMemo(
     () => parseDimensionsString(ARTWORK_DETAILS.dimensions),
@@ -137,6 +152,12 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
           top: FLOOR_COLOR_PRESETS[0].top,
           bottom: FLOOR_COLOR_PRESETS[0].bottom,
         };
+
+  const framePreviewUrls = useMemo(() => ({
+    "gold-classic": makeFramePreviewLShape("gold-classic", FRAME_PREVIEW_BOX_SIZE),
+    "black-modern": makeFramePreviewLShape("black-modern", FRAME_PREVIEW_BOX_SIZE),
+  }), []);
+
   const showChair = selectedChairId !== "none";
   const inSituChairSrc = showChair
     ? CHAIR_OPTIONS.find((c) => c.id === selectedChairId)?.src ?? CHAIR_OPTIONS[0].src
@@ -388,6 +409,42 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
                 ))}
               </div>
             </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Frame</span>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Frame options">
+                {FRAME_OPTIONS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setSelectedFrameId(option.id)}
+                    title={option.label}
+                    aria-label={option.label}
+                    aria-pressed={selectedFrameId === option.id}
+                    className={cn(
+                      "size-10 shrink-0 overflow-hidden rounded-md border-2 bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex items-center justify-center",
+                      selectedFrameId === option.id
+                        ? "border-foreground ring-2 ring-foreground/20"
+                        : "border-transparent hover:border-muted-foreground/30",
+                    )}
+                  >
+                    {option.id === "none" ? (
+                      <Ban className="h-5 w-5 shrink-0 text-gray-400" />
+                    ) : (
+                      <Image
+                        src={framePreviewUrls[option.id]}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        width={40}
+                        height={40}
+                        unoptimized
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
           </div>
         </DialogContent>
       </Dialog>
@@ -402,6 +459,7 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
         floorTexture={selectedFloorTextureId}
         showChair={showChair}
         chairImageSrc={inSituChairSrc}
+        frameStyle={selectedFrameId}
         artworkTitle={ARTWORK_DETAILS.title}
       />
     </>
