@@ -4,7 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
 
-import { InSituCanvas, type WallColors, type FloorColors, type FloorTextureId } from "./in-situ-canvas";
+import {
+  InSituCanvas,
+  type WallColors,
+  type FloorColors,
+  type FloorTextureId,
+  type FrameStyleId,
+} from "./in-situ-canvas";
 import type { DimensionsCm } from "@/lib/utils";
 
 // Props for the in situ modal
@@ -18,6 +24,8 @@ interface InSituModalProps {
   floorTexture?: FloorTextureId;
   showChair?: boolean;
   chairImageSrc?: string | null;
+  frameStyle?: FrameStyleId;
+  frameWidthCm?: number;
   artworkTitle?: string;
 }
 
@@ -32,6 +40,8 @@ export function InSituModal({
   floorTexture = "none",
   showChair = true,
   chairImageSrc = null,
+  frameStyle = "none",
+  frameWidthCm = 2,
   artworkTitle,
 }: InSituModalProps) {
   const [showDebug, setShowDebug] = useState(false);
@@ -87,6 +97,8 @@ export function InSituModal({
               floorTexture={floorTexture}
               showChair={showChair}
               chairImageSrc={chairImageSrc ?? undefined}
+              frameStyle={frameStyle}
+              frameWidthCm={frameWidthCm}
             />
           </div>
         </DialogPrimitive.Content>
