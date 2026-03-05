@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 
 import { cn, parseDimensionsString, type DimensionsCm } from "@/lib/utils";
@@ -153,10 +153,14 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
           bottom: FLOOR_COLOR_PRESETS[0].bottom,
         };
 
-  const framePreviewUrls = useMemo(() => ({
-    "gold-classic": makeFramePreviewLShape("gold-classic", FRAME_PREVIEW_BOX_SIZE),
-    "black-modern": makeFramePreviewLShape("black-modern", FRAME_PREVIEW_BOX_SIZE),
-  }), []);
+  const [framePreviewUrls, setFramePreviewUrls] = useState<Record<string, string> | null>(null);
+  useEffect(() => {
+    const urls = {
+      "gold-classic": makeFramePreviewLShape("gold-classic", FRAME_PREVIEW_BOX_SIZE),
+      "black-modern": makeFramePreviewLShape("black-modern", FRAME_PREVIEW_BOX_SIZE),
+    };
+    queueMicrotask(() => setFramePreviewUrls(urls));
+  }, []);
 
   const showChair = selectedChairId !== "none";
   const inSituChairSrc = showChair
@@ -430,7 +434,7 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
                   >
                     {option.id === "none" ? (
                       <Ban className="h-5 w-5 shrink-0 text-gray-400" />
-                    ) : (
+                    ) : framePreviewUrls?.[option.id] ? (
                       <Image
                         src={framePreviewUrls[option.id]}
                         alt=""
@@ -439,6 +443,8 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
                         height={40}
                         unoptimized
                       />
+                    ) : (
+                      <div className="h-full w-full animate-pulse bg-muted" aria-hidden />
                     )}
                   </button>
                 ))}
