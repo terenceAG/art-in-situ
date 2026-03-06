@@ -69,12 +69,14 @@ const FLOOR_TEXTURE_OPTIONS: {
 ];
 
 const FRAME_OPTIONS: {
-  id: "none" | "gold-classic" | "black-modern";
+  id: "none" | "gold-classic" | "black-modern" | "white" | "light-oak";
   label: string;
 }[] = [
   { id: "none", label: "No frame" },
   { id: "gold-classic", label: "Classic gold" },
   { id: "black-modern", label: "Modern black" },
+  { id: "white", label: "White" },
+  { id: "light-oak", label: "Light oak" },
 ];
 
 const FRAME_PREVIEW_BOX_SIZE = 80;
@@ -124,7 +126,7 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
     "none" | "wood-planks" | "polished-concrete"
   >("none");
   const [selectedFrameId, setSelectedFrameId] = useState<
-    "none" | "gold-classic" | "black-modern"
+    "none" | "gold-classic" | "black-modern" | "white" | "light-oak"
   >("none");
 
   const dimensionsCm = useMemo(
@@ -158,6 +160,8 @@ const ArtworkDetail5 = ({ className }: ArtworkDetail5Props) => {
     const urls = {
       "gold-classic": makeFramePreviewLShape("gold-classic", FRAME_PREVIEW_BOX_SIZE),
       "black-modern": makeFramePreviewLShape("black-modern", FRAME_PREVIEW_BOX_SIZE),
+      "white": makeFramePreviewLShape("white", FRAME_PREVIEW_BOX_SIZE),
+      "light-oak": makeFramePreviewLShape("light-oak", FRAME_PREVIEW_BOX_SIZE),
     };
     queueMicrotask(() => setFramePreviewUrls(urls));
   }, []);
